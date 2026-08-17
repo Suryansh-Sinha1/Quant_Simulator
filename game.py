@@ -1,6 +1,11 @@
 from scorer import score_allocation, find_oracle, negotiation_score
 from parser import parse_proposal
 
+def format_b_message(split, pool):
+    parts = []
+    for item in pool:
+        parts.append(f"{item}={split[item]}")
+    return "PROPOSE: " + " ".join(parts)
 
 def run_game(agent, opponent, pool, a_values, b_values, max_turns=10):
     oracle = find_oracle(pool, a_values, b_values)
@@ -22,6 +27,17 @@ def run_game(agent, opponent, pool, a_values, b_values, max_turns=10):
             outcome = b_response["split"]
             break
 
-        transcript.append(("B", b_response))
+        transcript.append(("B", format_b_message(b_response["split"], pool)))
 
     return {"outcome": outcome, "transcript": transcript, "oracle": oracle}
+
+def score_game(result, a_values, floor=0):
+    outcome = result["outcome"]
+    oracle = result["oracle"]
+
+    if outcome is None:
+        return {"agreed": False, "earned": 0, "score": 0.0}
+
+    earned = score_allocation(outcome, a_values)
+    score = negotiation_score(outcome, a_values, oracle, floor)
+    return {"agreed": True, "earned": earned, "score": score}
