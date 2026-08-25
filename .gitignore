@@ -5,3 +5,4 @@ venv/
 .vscode/
 check.py
 check_opp.py
+check_game.py
