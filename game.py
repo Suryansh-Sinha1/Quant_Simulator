@@ -1,4 +1,4 @@
-from scorer import score_allocation, find_oracle, negotiation_score
+from scorer import score_allocation, find_oracle, negotiation_score, pareto_efficiency
 from parser import parse_proposal
 
 def format_b_message(split, pool):
@@ -31,13 +31,14 @@ def run_game(agent, opponent, pool, a_values, b_values, max_turns=10):
 
     return {"outcome": outcome, "transcript": transcript, "oracle": oracle}
 
-def score_game(result, a_values, floor=0):
+def score_game(result, pool, a_values, b_values, floor=0):
     outcome = result["outcome"]
     oracle = result["oracle"]
 
     if outcome is None:
-        return {"agreed": False, "earned": 0, "score": 0.0}
+        return {"agreed": False, "earned": 0, "score": 0.0, "pareto": 0.0}
 
     earned = score_allocation(outcome, a_values)
-    score = negotiation_score(outcome, a_values, oracle, floor)
-    return {"agreed": True, "earned": earned, "score": score}
+    score = negotiation_score(outcome, pool, a_values, floor)
+    pareto = pareto_efficiency(outcome, pool, a_values, b_values, oracle)
+    return {"agreed": True, "earned": earned, "score": score, "pareto": pareto}

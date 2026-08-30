@@ -1,5 +1,6 @@
 import argparse
 import csv
+import os
 
 from scorer import ITEM_POOL
 from scenarios import make_scenario, is_usable
@@ -20,9 +21,34 @@ def parse_args():
     return p.parse_args()
 
 
+CSV_FIELDS = ["model", "precision", "seed", "agreed", "earned",
+              "score", "pareto", "turns"]
+
+
+def check_out_file(path):
+    """Fail before the model loads if `path` has an incompatible header.
+
+    write_csv appends, so an older file written with a different set of
+    columns would silently misalign every new row.
+    """
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return
+
+    with open(path, newline="") as f:
+        header = next(csv.reader(f), None)
+
+    if header != CSV_FIELDS:
+        raise SystemExit(
+            f"{path} has an incompatible header.\n"
+            f"  found:    {header}\n"
+            f"  expected: {CSV_FIELDS}\n"
+            "Move or delete that file, or pass --out with a new filename."
+        )
+
+
 def write_csv(path, rows):
     with open(path, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDS)
         if f.tell() == 0:
             writer.writeheader()
         writer.writerows(rows)
@@ -30,9 +56,9 @@ def write_csv(path, rows):
 
 def main():
     args = parse_args()
+    check_out_file(args.out)
     tokenizer, model = load_model(args.model, args.precision)
 
-    rows = []
     seed = 0
     completed = 0
 
@@ -48,7 +74,7 @@ def main():
         opponent = ScriptedOpponent(ITEM_POOL, b_values, args.max_turns)
 
         result = run_game(agent, opponent, ITEM_POOL, a_values, b_values, args.max_turns)
-        scored = score_game(result, a_values)
+        scored = score_game(result, ITEM_POOL, a_values, b_values)
 
         if args.show_transcript:
             print("--- seed", seed, "A values", a_values, "B values", b_values)
@@ -56,19 +82,22 @@ def main():
                 print(speaker, "|", text)
             print("--- outcome", result["outcome"])
 
-        rows.append({
+        row = {
             "model": args.model,
             "precision": args.precision,
             "seed": seed,
             "agreed": scored["agreed"],
             "earned": scored["earned"],
             "score": scored["score"],
-            "turns": len(result["transcript"]) // 2,
-        })
+            "pareto": scored["pareto"],
+            "turns": (len(result["transcript"]) + 1) // 2,
+        }
+        # Written per game rather than once at the end, so a crash partway
+        # through a long run does not discard the games already played.
+        write_csv(args.out, [row])
         completed += 1
-        print(seed, args.precision, scored["score"])
-
-    write_csv(args.out, rows)
+        print(seed, args.precision, "score", scored["score"],
+              "pareto", scored["pareto"])
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ def load_model(model_name, precision):
     kwargs = {"device_map": "auto"}
 
     if precision == "fp16":
-        kwargs["torch_dtype"] = torch.float16
+        kwargs["dtype"] = torch.float16
     elif precision == "int8":
         kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
     elif precision == "int4":
