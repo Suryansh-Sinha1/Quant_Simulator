@@ -23,13 +23,15 @@ def load_model(model_name, precision):
     return tokenizer, model
 
 class ModelAgent:
-    def __init__(self, tokenizer, model, system_prompt, max_new_tokens=120):
+    def __init__(self, tokenizer, model, system_prompt, max_new_tokens=120,
+                 turn_reminder=None):
         self.tokenizer = tokenizer
         self.model = model
         self.system_prompt = system_prompt
         self.max_new_tokens = max_new_tokens
+        self.turn_reminder = turn_reminder
 
-    def reply(self, transcript):
+    def build_messages(self, transcript):
         messages = [{"role": "system", "content": self.system_prompt}]
         for speaker, text in transcript:
             role = "assistant" if speaker == "A" else "user"
@@ -37,6 +39,17 @@ class ModelAgent:
 
         if len(transcript) == 0:
             messages.append({"role": "user", "content": "Make your opening offer."})
+
+        if self.turn_reminder:
+            if messages[-1]["role"] == "user":
+                messages[-1]["content"] += "\n\n" + self.turn_reminder
+            else:
+                messages.append({"role": "user", "content": self.turn_reminder})
+
+        return messages
+
+    def reply(self, transcript):
+        messages = self.build_messages(transcript)
 
         prompt = self.tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True

@@ -1,12 +1,10 @@
-from scorer import ITEM_POOL, all_splits, score_allocation
+from scorer import all_splits, score_allocation
+
 
 class ScriptedOpponent:
-
-    def __init__(self, pool, b_values, concession_per_turn=1):
+    def __init__(self, pool, b_values, max_turns=10, min_fraction=0.15):
         self.pool = pool
         self.b_values = b_values
-        self.concession_per_turn = concession_per_turn
-        
 
         ranked = []
         for a_gets, b_gets in all_splits(pool):
@@ -16,6 +14,15 @@ class ScriptedOpponent:
 
         self.ranked = ranked
         self.threshold = ranked[0][0]
+
+        floor_target = ranked[0][0] * min_fraction
+        self.concession_per_turn = (ranked[0][0] - floor_target) / max_turns
+
+    def best_split_above_threshold(self):
+        for b_score, a_gets, b_gets in self.ranked:
+            if b_score <= self.threshold:
+                return a_gets
+        return self.ranked[-1][1]
 
     def respond(self, a_offer):
         if a_offer is not None:
@@ -27,9 +34,3 @@ class ScriptedOpponent:
         counter = self.best_split_above_threshold()
         self.threshold -= self.concession_per_turn
         return {"action": "counter", "split": counter}
-
-    def best_split_above_threshold(self):
-        for b_score, a_gets, b_gets in self.ranked:
-            if b_score <= self.threshold:
-                return a_gets
-        return self.ranked[-1][1]
