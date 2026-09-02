@@ -22,7 +22,8 @@ def parse_args():
 
 
 CSV_FIELDS = ["model", "precision", "seed", "agreed", "earned",
-              "score", "pareto", "turns"]
+              "score", "pareto", "turns",
+              "format_ok", "parse_none", "parse_invalid"]
 
 
 def check_out_file(path):
@@ -91,13 +92,19 @@ def main():
             "score": scored["score"],
             "pareto": scored["pareto"],
             "turns": (len(result["transcript"]) + 1) // 2,
+            "format_ok": scored["format_ok"],
+            "parse_none": scored["parse_none"],
+            "parse_invalid": scored["parse_invalid"],
         }
         # Written per game rather than once at the end, so a crash partway
         # through a long run does not discard the games already played.
         write_csv(args.out, [row])
         completed += 1
         print(seed, args.precision, "score", scored["score"],
-              "pareto", scored["pareto"])
+              "pareto", scored["pareto"],
+              "format_ok", scored["format_ok"],
+              "none", scored["parse_none"],
+              "invalid", scored["parse_invalid"])
 
 
 if __name__ == "__main__":
